@@ -1,0 +1,31 @@
+// -*- IDL -*-
+
+#ifndef LEGGEDROBOTINTERFACE_IDL
+#define LEGGEDROBOTINTERFACE_IDL
+
+#include "BasicDataType.idl"
+#include "ExtendedDataTypes.idl"
+
+module RTC {
+	struct Leg
+	{
+		RTC::Pose3D pose;
+		RTC::Velocity3D velocity;
+		boolean onGround;
+	};
+
+
+	struct LeggedRobot
+	{
+		RTC::Time tm;
+		sequence<Leg> leg_data;
+		RTC::Velocity3D body_velocity;
+		RTC::Pose3D body_pose;
+	};
+
+
+}; /* module */
+
+
+
+#endif /* LEGGEDROBOTINTERFACE_IDL */
