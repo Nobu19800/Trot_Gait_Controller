@@ -265,7 +265,7 @@ Stability_Margin Stability_Margin::calc_stability_margin(Leg_Object *legs, bool 
 *@param pos1 脚1の位置
 *@param dir 安定になる重心位置の方向
 */
-Stability_Margin Stability_Margin::calc_distance(Vector3d pos0, Vector3d pos1, Stability_Direction dir, bool ne)
+Stability_Margin Stability_Margin::calc_distance(Vector3d &pos0, Vector3d &pos1, Stability_Direction dir, bool ne)
 {
 	Stability_Margin s = Stability_Margin();
 	s.stb_dir = dir;

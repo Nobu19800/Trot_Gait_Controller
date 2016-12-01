@@ -59,7 +59,7 @@ public:
 	*@param dir 安定になる重心位置の方向
 	*@param ne trueの場合はNE安定余裕も計算
 	*/
-	static Stability_Margin calc_distance(Vector3d pos0, Vector3d pos1, Stability_Direction dir, bool ne = false);
+	static Stability_Margin calc_distance(Vector3d &pos0, Vector3d &pos1, Stability_Direction dir, bool ne = false);
 	/**
 	*@brief 安定余裕を取得
 	*@param ne trueの場合はNE安定余裕を取得

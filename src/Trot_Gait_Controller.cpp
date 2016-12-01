@@ -176,6 +176,10 @@ RTC::ReturnCode_t Trot_Gait_Controller::onActivated(RTC::UniqueId ec_id)
 	robot.setCenterPosition(m_center_pos_x, m_center_pos_y, m_center_pos_z);
 	robot.setLiftHeight(m_lift_height);
 
+	m_Trajectory.leg_data.length(4);
+	m_target_velocity.data.vx = 0;
+	m_target_velocity.data.va = 0;
+	m_target_velocity.data.va = 0;
 
   return RTC::RTC_OK;
 }

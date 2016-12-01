@@ -66,9 +66,10 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 	{
 		legs[i].update();
 	}
+
 	body->update();
 
-
+	correctlyOnGroundPos();
 
 	Direction_Object d = Direction_Object(vx, vy, dthe, legs);
 
@@ -126,13 +127,21 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 
 	if (state == UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG)
 	{
-		legs[0].set_state(ON_GROUND_TROT);
-		legs[1].set_state(NOT_ON_GROUND_TROT);
-		legs[2].set_state(ON_GROUND_TROT);
-		legs[3].set_state(NOT_ON_GROUND_TROT);
 
-		body->set_state(ON_GROUND_TROT);
-		body->setRotateStatus(d.pos, dthe, mc, sampling_time);
+		
+		legs[1].set_state(NOT_ON_GROUND_TROT);
+		legs[3].set_state(NOT_ON_GROUND_TROT);
+		
+
+		if (Leg_Object::LegsStop(legs, 4) == 0)
+		{
+			legs[0].set_state(ON_GROUND_TROT);
+			legs[2].set_state(ON_GROUND_TROT);
+			body->set_state(ON_GROUND_TROT);
+			body->setRotateStatus(d.pos, dthe, mc, sampling_time);
+		}
+
+		
 
 		legs[0].offset_count = (int)((double)mc*(0.5));
 		legs[1].offset_count = (int)((double)mc*(-0.5));
@@ -143,16 +152,24 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 		{
 			legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time);
 		}
+		correctlyOffGroundPos();
 	}
 	else if (state == UP_FRONT_RIGHT_LEG_AND_BACK_LEFT_LEG)
 	{
+		
 		legs[0].set_state(NOT_ON_GROUND_TROT);
-		legs[1].set_state(ON_GROUND_TROT);
 		legs[2].set_state(NOT_ON_GROUND_TROT);
-		legs[3].set_state(ON_GROUND_TROT);
 
-		body->set_state(ON_GROUND_TROT);
-		body->setRotateStatus(d.pos, dthe, mc, sampling_time);
+		if (Leg_Object::LegsStop(legs, 4) == 0)
+		{
+			legs[1].set_state(ON_GROUND_TROT);
+			legs[3].set_state(ON_GROUND_TROT);
+			body->set_state(ON_GROUND_TROT);
+			body->setRotateStatus(d.pos, dthe, mc, sampling_time);
+		}
+
+		
+		
 
 		legs[0].offset_count = (int)((double)mc*(-0.5));
 		legs[1].offset_count = (int)((double)mc*(0.5));
@@ -164,7 +181,104 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 			legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time);
 			//legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time, true, 1.0 - (1.0 / 3.0*(double)(Leg_Object::LegsStop(legs, 4) - 1)));
 		}
+		correctlyOffGroundPos();
 	}
 
 }
 
+
+/**
+*@brief 補正方向計算
+* @param pos0 脚0の位置
+* @param pos1 脚1の位置
+* @return 最短距離ベクトル
+*/
+Vector2d TrotGait::calcDistance(Vector2d &pos0, Vector2d &pos1)
+{
+
+	Vector2d vec1 = pos1 - pos0;
+	vec1 = vec1.normalized();
+	Vector2d vec2 = - pos0;
+	Vector2d a = vec2.dot(vec1)*vec1;
+	
+	Vector2d b = vec2 - a;
+	//std::cout << vec2.dot(vec1) << "\t" << pos0(0) << "\t" << pos0(1) << "\t" << pos1(0) << "\t" << pos1(1) << std::endl;
+	
+	return b;
+}
+
+
+/**
+*@brief 重心位置が対角線上に乗るように脚先接地点を補正
+* @param pos0 脚0の位置
+* @param pos1 脚1の位置
+*/
+void TrotGait::correctlyOnGroundPos()
+{
+	if (state == UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG)
+	{
+		Vector2d pos0(legs[0].current_pos(0), legs[0].current_pos(1));
+		Vector2d pos1(legs[2].current_pos(0), legs[2].current_pos(1));
+		Vector2d diff = calcDistance(pos0, pos1);
+		legs[0].current_pos(0) += diff(0);
+		legs[0].current_pos(1) += diff(1);
+		legs[2].current_pos(0) += diff(0);
+		legs[2].current_pos(1) += diff(1);
+		//std::cout << diff << std::endl;
+
+
+	}
+	else if (state == UP_FRONT_RIGHT_LEG_AND_BACK_LEFT_LEG)
+	{
+		Vector2d pos0(legs[1].current_pos(0), legs[1].current_pos(1));
+		Vector2d pos1(legs[3].current_pos(0), legs[3].current_pos(1));
+		//std::cout << calcDistance(pos0, pos1) << std::endl;
+		Vector2d diff = calcDistance(pos0, pos1);
+		legs[1].current_pos(0) += diff(0);
+		legs[1].current_pos(1) += diff(1);
+		legs[3].current_pos(0) += diff(0);
+		legs[3].current_pos(1) += diff(1);
+		//std::cout << diff << std::endl;
+
+	}
+}
+/**
+*@brief 重心位置が対角線上に乗るように目標着地点を補正
+* @param pos0 脚0の位置
+* @param pos1 脚1の位置
+*/
+void TrotGait::correctlyOffGroundPos()
+{
+	if (state == UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG)
+	{
+		Vector2d pos0(legs[1].target_pos(0), legs[1].target_pos(1));
+		Vector2d pos1(legs[3].target_pos(0), legs[3].target_pos(1));
+		//std::cout << calcDistance(pos0, pos1) << std::endl;
+		Vector2d diff = calcDistance(pos0, pos1);
+		legs[1].target_pos(0) += diff(0);
+		legs[1].target_pos(1) += diff(1);
+		legs[3].target_pos(0) += diff(0);
+		legs[3].target_pos(1) += diff(1);
+		//std::cout << diff << std::endl;
+
+
+	}
+	else if (state == UP_FRONT_RIGHT_LEG_AND_BACK_LEFT_LEG)
+	{
+		
+
+		
+
+		
+
+		Vector2d pos0(legs[0].target_pos(0), legs[0].target_pos(1));
+		Vector2d pos1(legs[2].target_pos(0), legs[2].target_pos(1));
+		Vector2d diff = calcDistance(pos0, pos1);
+		legs[0].target_pos(0) += diff(0);
+		legs[0].target_pos(1) += diff(1);
+		legs[2].target_pos(0) += diff(0);
+		legs[2].target_pos(1) += diff(1);
+		//std::cout << diff << std::endl;
+
+	}
+}
