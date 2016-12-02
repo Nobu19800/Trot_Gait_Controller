@@ -37,6 +37,9 @@ TrotGait::TrotGait(Leg_Object *ls, Body_Object *bo) : GaitBase(ls, bo)
 	state = UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG;
 	dir = WALK_STOP;
 
+	current_vx = 0;
+	current_vy = 0;
+
 
 }
 
@@ -69,7 +72,7 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 
 	body->update();
 
-	correctlyOnGroundPos();
+	correctlyOnGroundPos(current_vx, current_vy);
 
 	Direction_Object d = Direction_Object(vx, vy, dthe, legs);
 
@@ -100,7 +103,14 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 	body->update_status(dthe, mc);
 
 	if (dir == d.dir)
+	{
 		body->setRotateStatus(d.pos, dthe, mc, sampling_time, false);
+		if (Leg_Object::LegsStop(legs, 4) == 0)
+		{
+			current_vx = vx;
+			current_vy = vy;
+		}
+	}
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -116,6 +126,9 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 		}
 		body->set_state(MOVE_STOP);
 		body->count = 0;
+
+		current_vx = vx;
+		current_vy = vy;
 	}
 	dir = d.dir;
 
@@ -152,7 +165,7 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 		{
 			legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time);
 		}
-		correctlyOffGroundPos();
+		correctlyOffGroundPos(current_vx, current_vy);
 	}
 	else if (state == UP_FRONT_RIGHT_LEG_AND_BACK_LEFT_LEG)
 	{
@@ -181,7 +194,7 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 			legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time);
 			//legs[i].setRotateStatus(d.pos, dthe, mc, sampling_time, true, 1.0 - (1.0 / 3.0*(double)(Leg_Object::LegsStop(legs, 4) - 1)));
 		}
-		correctlyOffGroundPos();
+		correctlyOffGroundPos(current_vx, current_vy);
 	}
 
 }
@@ -191,39 +204,81 @@ void TrotGait::walk(double vx, double vy, double dthe, double sd)
 *@brief 補正方向計算
 * @param pos0 脚0の位置
 * @param pos1 脚1の位置
+* @param vec 胴体速度ベクトル
 * @return 最短距離ベクトル
 */
-Vector2d TrotGait::calcDistance(Vector2d &pos0, Vector2d &pos1)
+Vector2d TrotGait::calcDistance(Vector2d &pos0, Vector2d &pos1, Vector2d &vec)
 {
 
-	Vector2d vec1 = pos1 - pos0;
+	/*Vector2d vec1 = pos1 - pos0;
 	vec1 = vec1.normalized();
 	Vector2d vec2 = - pos0;
 	Vector2d a = vec2.dot(vec1)*vec1;
 	
-	Vector2d b = vec2 - a;
+	Vector2d b = vec2 - a;*/
 	//std::cout << vec2.dot(vec1) << "\t" << pos0(0) << "\t" << pos0(1) << "\t" << pos1(0) << "\t" << pos1(1) << std::endl;
-	
-	return b;
+	const double minValue = 0.0001;
+	if (fabs(vec(0)) < minValue && fabs(vec(1)) < minValue)
+	{
+		Vector2d ret(0, 0);
+		return ret;
+	}
+
+	if (fabs(vec(0)) < minValue)
+	{
+		double a = (pos1(1) - pos0(1)) / (pos1(0) - pos0(0));
+		double b = pos1(1) - a*pos1(0);
+		Vector2d ret(b / a, 0);
+		return ret;
+	}
+	if (fabs(vec(1)) < minValue)
+	{
+		
+		double a = (pos1(1) - pos0(1)) / (pos1(0) - pos0(0));
+		double b = pos1(1) - a*pos1(0);
+		Vector2d ret(0, -b);
+		return ret;
+
+	}
+	Vector2d vec1 = pos1 - pos0;
+	if (fabs(vec1(0)) < minValue)
+	{
+		vec1(1) = minValue;
+	}
+	double a1 = vec1(1) / vec1(0);
+	double a3 = -vec(0) / vec(1);
+	double x = (a1*pos0(0) - pos0(1)) / (a1 - a3);
+	double y = a1 * (x - pos0(0)) + pos0(1);
+	Vector2d ret(-x,-y);
+
+	return ret;
 }
 
 
 /**
 *@brief 重心位置が対角線上に乗るように脚先接地点を補正
-* @param pos0 脚0の位置
-* @param pos1 脚1の位置
+* @param vx 胴体速度(X)
+* @param vy 胴体速度(Y)
 */
-void TrotGait::correctlyOnGroundPos()
+void TrotGait::correctlyOnGroundPos(double vx, double vy)
 {
+	if (Leg_Object::LegsStop(legs, 4) == 2)return;
 	if (state == UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG)
 	{
 		Vector2d pos0(legs[0].current_pos(0), legs[0].current_pos(1));
 		Vector2d pos1(legs[2].current_pos(0), legs[2].current_pos(1));
-		Vector2d diff = calcDistance(pos0, pos1);
-		legs[0].current_pos(0) += diff(0);
-		legs[0].current_pos(1) += diff(1);
-		legs[2].current_pos(0) += diff(0);
-		legs[2].current_pos(1) += diff(1);
+		Vector2d vec(vx, vy);
+		Vector2d diff = calcDistance(pos0, pos1, vec);
+		//if (legs[0].state != MOVE_PAUSE && legs[0].state != MOVE_STOP)
+		{
+			legs[0].current_pos(0) += diff(0);
+			legs[0].current_pos(1) += diff(1);
+		}
+		//if (legs[2].state != MOVE_PAUSE && legs[2].state != MOVE_STOP)
+		{
+			legs[2].current_pos(0) += diff(0);
+			legs[2].current_pos(1) += diff(1);
+		}
 		//std::cout << diff << std::endl;
 
 
@@ -232,29 +287,36 @@ void TrotGait::correctlyOnGroundPos()
 	{
 		Vector2d pos0(legs[1].current_pos(0), legs[1].current_pos(1));
 		Vector2d pos1(legs[3].current_pos(0), legs[3].current_pos(1));
-		//std::cout << calcDistance(pos0, pos1) << std::endl;
-		Vector2d diff = calcDistance(pos0, pos1);
-		legs[1].current_pos(0) += diff(0);
-		legs[1].current_pos(1) += diff(1);
-		legs[3].current_pos(0) += diff(0);
-		legs[3].current_pos(1) += diff(1);
+		Vector2d vec(vx, vy);
+		Vector2d diff = calcDistance(pos0, pos1, vec);
+		//if (legs[1].state != MOVE_PAUSE && legs[1].state != MOVE_STOP)
+		{
+			legs[1].current_pos(0) += diff(0);
+			legs[1].current_pos(1) += diff(1);
+		}
+		//if (legs[3].state != MOVE_PAUSE && legs[3].state != MOVE_STOP)
+		{
+			legs[3].current_pos(0) += diff(0);
+			legs[3].current_pos(1) += diff(1);
+		}
 		//std::cout << diff << std::endl;
 
 	}
 }
 /**
 *@brief 重心位置が対角線上に乗るように目標着地点を補正
-* @param pos0 脚0の位置
-* @param pos1 脚1の位置
+* @param vx 胴体速度(X)
+* @param vy 胴体速度(Y)
 */
-void TrotGait::correctlyOffGroundPos()
+void TrotGait::correctlyOffGroundPos(double vx, double vy)
 {
+	
 	if (state == UP_FRONT_LEFT_LEG_AND_BACK_RIGHT_LEG)
 	{
 		Vector2d pos0(legs[1].target_pos(0), legs[1].target_pos(1));
 		Vector2d pos1(legs[3].target_pos(0), legs[3].target_pos(1));
-		//std::cout << calcDistance(pos0, pos1) << std::endl;
-		Vector2d diff = calcDistance(pos0, pos1);
+		Vector2d vec(vx, vy);
+		Vector2d diff = calcDistance(pos0, pos1, vec);
 		legs[1].target_pos(0) += diff(0);
 		legs[1].target_pos(1) += diff(1);
 		legs[3].target_pos(0) += diff(0);
@@ -273,7 +335,8 @@ void TrotGait::correctlyOffGroundPos()
 
 		Vector2d pos0(legs[0].target_pos(0), legs[0].target_pos(1));
 		Vector2d pos1(legs[2].target_pos(0), legs[2].target_pos(1));
-		Vector2d diff = calcDistance(pos0, pos1);
+		Vector2d vec(vx, vy);
+		Vector2d diff = calcDistance(pos0, pos1, vec);
 		legs[0].target_pos(0) += diff(0);
 		legs[0].target_pos(1) += diff(1);
 		legs[2].target_pos(0) += diff(0);

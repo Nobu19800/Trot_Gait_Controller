@@ -49,19 +49,22 @@ public:
 	* @param pos1 脚1の位置
 	* @return 最短距離ベクトル
 	*/
-	Vector2d calcDistance(Vector2d &pos0, Vector2d &pos1);
+	Vector2d calcDistance(Vector2d &pos0, Vector2d &pos1, Vector2d &vec);
 	/**
 	*@brief 重心位置が対角線上に乗るように脚先接地点を補正
 	* @param pos0 脚0の位置
 	* @param pos1 脚1の位置
 	*/
-	void correctlyOnGroundPos();
+	void correctlyOnGroundPos(double vx, double vy);
 	/**
 	*@brief 重心位置が対角線上に乗るように目標着地点を補正
 	* @param pos0 脚0の位置
 	* @param pos1 脚1の位置
 	*/
-	void correctlyOffGroundPos();
+	void correctlyOffGroundPos(double vx, double vy);
+
+	double current_vx;
+	double current_vy;
 
 };
 
