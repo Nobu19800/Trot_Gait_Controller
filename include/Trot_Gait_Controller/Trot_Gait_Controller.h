@@ -354,12 +354,12 @@ class Trot_Gait_Controller
 
   // DataOutPort declaration
   // <rtc-template block="outport_declare">
-  RTC::LeggedRobot m_Trajectory;
+  WalkingRobot::LeggedRobot m_Trajectory;
   /*!
    * 足先軌道
    * - Type: RTC::LeggedRobot
    */
-  OutPort<RTC::LeggedRobot> m_TrajectoryOut;
+  OutPort<WalkingRobot::LeggedRobot> m_TrajectoryOut;
   RTC::TimedPose2D m_current_pose;
   /*!
    * 現在位置
@@ -372,16 +372,32 @@ class Trot_Gait_Controller
 
   // CORBA Port declaration
   // <rtc-template block="corbaport_declare">
-  
+  /*!
+  * サーボ操作コマンド
+  */
+  RTC::CorbaPort m_LeggedRobotCommonInterface_ServoPort;
+  /*!
+  * ロボット操作コマンド
+  */
+  RTC::CorbaPort m_LeggedRobotCommonInterface_RobotPort;
+
   // </rtc-template>
 
   // Service declaration
   // <rtc-template block="service_declare">
-  
+
   // </rtc-template>
 
   // Consumer declaration
   // <rtc-template block="consumer_declare">
+  /*!
+  * サーボ操作コマンド
+  */
+  RTC::CorbaConsumer<WalkingRobot::LeggedRobotCommonInterface_Servo> m_LeggedRobotCommonInterface_Servo;
+  /*!
+  * ロボット操作コマンド
+  */
+  RTC::CorbaConsumer<WalkingRobot::LeggedRobotCommonInterface_Robot> m_LeggedRobotCommonInterface_Robot;
   
   // </rtc-template>
 
